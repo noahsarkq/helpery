@@ -48,7 +48,7 @@ async def stream_handler(request):
     work_loads[_index] += 1
     if Var.MULTI_CLIENT:
         logging.info(f"Client {_index} is now serving {request.remote}")
-        logging.info(f"after >> {str(work_loads)}")
+#         logging.info(f"after >> {str(work_loads)}")
     # logging.info(f"before >> {str(work_loads)}")
 
     try:
@@ -76,7 +76,7 @@ async def media_streamer(request: web.Request, message_id: int, faster_client,
                          work_loads, index):
     range_header = request.headers.get("Range", 0)
     #logging.info(request.headers)
-    logging.info(f"{str(work_loads)}")
+#     logging.info(f"{str(work_loads)}")
 
     tg_connect = TGCustomYield(faster_client)
     media_msg = await faster_client.get_messages(Var.BIN_CHANNEL, message_id)
