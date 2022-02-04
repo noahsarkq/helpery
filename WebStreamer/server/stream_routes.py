@@ -2,11 +2,13 @@
 # Thanks to Eyaadh <https://github.com/eyaadh>
 
 import re
+from threading import local
 import time
 import math
 import logging
 import secrets
 import mimetypes
+import aiohttp
 from aiohttp import web
 from WebStreamer.vars import Var
 from aiohttp.http_exceptions import BadStatusLine
@@ -14,14 +16,15 @@ from WebStreamer.utils.file_id import get_unique_id
 from WebStreamer.bot import multi_clients, work_loads
 from WebStreamer import StartTime, __version__, bot_info
 from WebStreamer.utils.time_format import get_readable_time
-from WebStreamer.bot.clients import multi_clients, work_loads
+# from WebStreamer.bot.clients import multi_clients, work_loads
 from WebStreamer.utils.custom_dl import TGCustomYield, chunk_size, offset_fix
 
 routes = web.RouteTableDef()
 
 
-@routes.get("/", allow_head=True)
+@routes.get("/status", allow_head=True)
 async def root_route_handler(request):
+    logging.info(f"status >> {str(work_loads)}")
     return web.json_response({
         "server_status":
         "running",
@@ -32,34 +35,48 @@ async def root_route_handler(request):
         "connected_bots":
         len(multi_clients),
         "loads":
-        work_loads,
+        str(work_loads),
         "version":
         __version__,
     })
 
 
-@routes.get(r"/{message_id:\S+}")
+@routes.get(r"/{pathx:\d+}/{hsh:\w+}", allow_head=True)
 async def stream_handler(request):
-    try:
-        message_id = request.match_info['message_id']
-        message_id = int(re.search(r'(\d+)(?:\/\S+)?', message_id).group(1))
-        return await media_streamer(request, message_id)
-    except ValueError:
-        raise web.HTTPNotFound
-    except AttributeError:
-        pass
-    except BadStatusLine:
-        pass
-
-
-async def media_streamer(request: web.Request, message_id: int):
-    range_header = request.headers.get("Range", 0)
-
     _index = min(work_loads, key=work_loads.get)
     faster_client = multi_clients[_index]
     work_loads[_index] += 1
     if Var.MULTI_CLIENT:
         logging.info(f"Client {_index} is now serving {request.remote}")
+        logging.info(f"after >> {str(work_loads)}")
+    # logging.info(f"before >> {str(work_loads)}")
+
+    try:
+        # logging.info(request)
+        requestx = re.findall(r"/(\d+)/(\w+)", str(request))[0]
+        message_id = int(requestx[0])
+        local_hash = requestx[1]
+        # logging.info(local_hash)
+        # logging.info(message_id)
+        if local_hash in Var.HASH:
+            logging.info(message_id)
+            return await media_streamer(request, message_id, faster_client,
+                                        work_loads, _index)
+        else:
+            return web.json_response("Are you sure you have Access")
+
+    except Exception as e:
+        logging.info(e)
+        pass
+    finally:
+        work_loads[_index] -= 1
+
+
+async def media_streamer(request: web.Request, message_id: int, faster_client,
+                         work_loads, index):
+    range_header = request.headers.get("Range", 0)
+    #logging.info(request.headers)
+    logging.info(f"{str(work_loads)}")
 
     tg_connect = TGCustomYield(faster_client)
     media_msg = await faster_client.get_messages(Var.BIN_CHANNEL, message_id)
@@ -105,21 +122,39 @@ async def media_streamer(request: web.Request, message_id: int):
             file_name = f"{secrets.token_hex(2)}.unknown"
     if "video/" in mime_type or "audio/" in mime_type:
         disposition = "inline"
-    return_resp = web.Response(
-        status=206 if range_header else 200,
-        body=body,
-        headers={
-            "Content-Type": mime_type,
-            "Content-Length": str(file_size),
-            "Range": f"bytes={from_bytes}-{until_bytes}",
-            "Content-Range": f"bytes {from_bytes}-{until_bytes}/{file_size}",
-            "Content-Disposition": f'{disposition}; filename="{file_name}"',
-            "Accept-Ranges": "bytes",
-        },
-    )
+    try:
+        return_resp = web.Response(
+            status=206 if range_header else 200,
+            body=body,
+            headers={
+                "Content-Type": mime_type,
+                # "Connection": "close",
+                # " Keep-Alive": "timeout=5, max=1000",
+                "Content-Length": str(file_size),
+                "Range": f"bytes={from_bytes}-{until_bytes}",
+                "Content-Range":
+                f"bytes {from_bytes}-{until_bytes}/{file_size}",
+                "Content-Disposition":
+                f'{disposition}; filename="{file_name}"',
+                "Accept-Ranges": "bytes",
+            },
+        )
 
-    if return_resp.status == 200:
-        return_resp.headers.add("Content-Length", str(file_size))
+        if return_resp.status == 200:
+            logging.info("200 Happened")
+            return_resp.headers.add("Content-Length", str(file_size))
+        if return_resp.status == 503:
+            logging.info("503 Happened")
 
-    work_loads[_index] -= 1
+        if return_resp.status == 499:
+            logging.info("499 Happened")
+
+        #logging.info(return_resp.status)
+    # logging.info(web.WebSocketResponse())
+    #logging.info(f"last >> {work_loads}")
+    except Exception as e:
+        logging.info(e)
+
+        pass
+    #logging.info(return_resp)
     return return_resp
