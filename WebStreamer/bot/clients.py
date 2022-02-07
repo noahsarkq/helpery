@@ -14,9 +14,11 @@ async def initialize_clients():
     if not all_tokens:
         print("No additional clients found, using default client")
         return
+    drb=0
     for client_id, token in all_tokens.items():
+        drb+=1
         instance = Client(
-            session_name=":memory:",
+            session_name=f"mem{drb}",
             api_id=Var.API_ID,
             api_hash=Var.API_HASH,
             bot_token=token,
