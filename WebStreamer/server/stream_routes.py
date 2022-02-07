@@ -64,6 +64,7 @@ async def media_streamer(request: web.Request, message_id: int, secure_hash: str
     
     index = min(work_loads, key=work_loads.get)
     faster_client = multi_clients[index]
+    work_loads[index] += 1
     
     if Var.MULTI_CLIENT:
         logging.info(f"Client {index} is now serving {request.remote}")
