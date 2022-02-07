@@ -185,7 +185,7 @@ class ByteStreamer:
         Thanks to Eyaadh <https://github.com/eyaadh>
         """
         client = self.client
-        work_loads[index] += 1
+       
         logging.debug(f"Starting to yielding file with client {index}.")
         media_session = await self.generate_media_session(client, file_id)
 
