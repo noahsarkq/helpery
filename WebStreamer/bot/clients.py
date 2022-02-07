@@ -3,8 +3,8 @@
 
 from ..vars import Var
 from pyrogram import Client
+from WebStreamer.utils import TokenParser
 from . import multi_clients, work_loads, StreamBot
-from WebStreamer.utils.config_parser import TokenParser
 
 
 async def initialize_clients():
@@ -14,12 +14,9 @@ async def initialize_clients():
     if not all_tokens:
         print("No additional clients found, using default client")
         return
-    data_ses=0
     for client_id, token in all_tokens.items():
-        data_ses += 1
-        session_x=f"bot_session{data_ses}"
         instance = Client(
-            session_name=session_x,
+            session_name=":memory:",
             api_id=Var.API_ID,
             api_hash=Var.API_HASH,
             bot_token=token,

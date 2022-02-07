@@ -3,18 +3,17 @@
 
 import asyncio
 import logging
+from .vars import Var
 from aiohttp import web
 from pyrogram import idle
+from WebStreamer import utils
 from WebStreamer import bot_info
-from WebStreamer.vars import Var
 from WebStreamer.server import web_server
-from WebStreamer.utils.keepalive import ping_server
 from WebStreamer.bot.clients import initialize_clients
 
+
 logging.basicConfig(
-    level=logging.INFO,
-    format=
-    "%(asctime)s - %(name)s - %(levelname)s - %(message)s [%(filename)s:%(lineno)d]"
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logging.getLogger("pyrogram").setLevel(logging.ERROR)
 logging.getLogger("aiohttp").setLevel(logging.ERROR)
@@ -32,11 +31,9 @@ async def start_services():
     await initialize_clients()
     print("----------------------------- DONE -----------------------------")
     if Var.ON_HEROKU:
-        print(
-            "------------------ Starting Keep Alive Service ------------------"
-        )
+        print("------------------ Starting Keep Alive Service ------------------")
         print()
-        asyncio.create_task(ping_server())
+        asyncio.create_task(utils.ping_server())
     print("-------------------- Initalizing Web Server --------------------")
     app = web.AppRunner(await web_server())
     await app.setup()
@@ -47,10 +44,8 @@ async def start_services():
     print("----------------------- Service Started -----------------------")
     print("                        bot =>> {}".format(bot_info.first_name))
     if bot_info.dc_id:
-        print("                        DC ID =>> {}".format(str(
-            bot_info.dc_id)))
-    print("                        server ip =>> {}".format(
-        bind_address, Var.PORT))
+        print("                        DC ID =>> {}".format(str(bot_info.dc_id)))
+    print("                        server ip =>> {}".format(bind_address, Var.PORT))
     if Var.ON_HEROKU:
         print("                        app running on =>> {}".format(Var.FQDN))
     print("---------------------------------------------------------------")
@@ -61,5 +56,4 @@ if __name__ == "__main__":
     try:
         loop.run_until_complete(start_services())
     except KeyboardInterrupt:
-        logging.info(
-            "----------------------- Service Stopped -----------------------")
+        logging.info("----------------------- Service Stopped -----------------------")
